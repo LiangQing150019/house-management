@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中兴翡翠之光 - 房源实时展示页</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Microsoft Yahei", sans-serif;
+    }
+    body {
+      padding: 5px;
+      background: #f5f5f5;
+      overflow-x: hidden;
+    }
+    .container {
+      max-width: 100vw;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 0 5px;
+    }
+    .building-title {
+      grid-column: 1 / 4;
+      background: #c00;
+      color: #fff;
+      text-align: center;
+      padding: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+    .sync-status {
+      grid-column: 1 / 4;
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      margin: 3px 0;
+    }
+    .unit-module {
+      background: white;
+      padding: 6px;
+      border-radius: 6px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+      height: fit-content;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .unit-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #c00;
+      margin-bottom: 5px;
+      text-align: center;
+    }
+    .room-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9px;
+    }
+    .room-table th, .room-table td {
+      border: 1px solid #ddd;
+      padding: 2px 1px;
+      text-align: center;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+    .room-table th {
+      background: #f0f9ff;
+      color: #003366;
+      font-weight: bold;
+      padding: 3px 1px;
+    }
+    .sold {
+      background: #fee2e2 !important;
+      color: #dc2626 !important;
+      font-weight: bold;
+    }
+    .pw-section {
+      grid-column: 1 / 4;
+      margin-top: 10px;
+    }
+    .pw-title {
+      background: #c00;
+      color: #fff;
+      text-align: center;
+      padding: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .pw-subtitle {
+      background: #3b82f6;
+      color: #fff;
+      text-align: center;
+      padding: 4px;
+      font-size: 12px;
+      font-weight: bold;
+      margin: 6px 0 3px 0;
+      border-radius: 3px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 5px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #e53935;
+    }
+    .header h1 {
+      font-size: 20px;
+      color: #e53935;
+      margin-bottom: 5px;
+    }
+    .header p {
+      font-size: 12px;
+      color: #666;
+    }
+    /* 紧凑车位布局 */
+    .parking-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .parking-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 3px;
+      background: white;
+      padding: 6px;
+      border-radius: 6px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+    .parking-item {
+      padding: 4px 2px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      text-align: center;
+      font-size: 10px;
+      line-height: 1.1;
+    }
+    /* 紧凑仓房布局 */
+    .warehouse-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .warehouse-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3px;
+      background: white;
+      padding: 6px;
+      border-radius: 6px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+    .warehouse-item {
+      padding: 4px 2px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      text-align: center;
+      font-size: 10px;
+      line-height: 1.1;
+    }
+    .connection-status {
+      position: fixed;
+      bottom: 5px;
+      right: 5px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 10px;
+      z-index: 1000;
+    }
+    .connection-status.connected {
+      background: rgba(16, 185, 129, 0.8);
+    }
+    .connection-status.disconnected {
+      background: rgba(239, 68, 68, 0.8);
+    }
+    /* 响应式调整 */
+    @media (max-width: 1200px) {
+      .container {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .building-title, .sync-status, .pw-section {
+        grid-column: 1 / 3;
+      }
+      .unit-module {
+        max-height: 400px;
+      }
+    }
+    @media (max-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      .building-title, .sync-status, .pw-section {
+        grid-column: 1 / 2;
+      }
+      .parking-container, .warehouse-container {
+        grid-template-columns: 1fr;
+      }
+      .unit-module {
+        max-height: 350px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>中兴翡翠之光 - 房源售卖实时盘</h1>
+    <p>数据实时同步：最后更新时间 <span id="lastUpdate">--</span></p>
+  </div>
+  
+  <div class="container">
+    <!-- 4号楼标题 -->
+    <div class="building-title">4号楼</div>
+
+    <!-- 同步状态提示 -->
+    <div class="sync-status" id="syncStatus">正在连接服务器...</div>
+
+    <!-- 4号楼1单元（西） -->
+    <div class="unit-module">
+      <div class="unit-title">1单元（西）</div>
+      <table class="room-table" id="unit4-1-table">
+        <thead>
+          <tr>
+            <th>楼层</th>
+            <th colspan="2">01（西）</th>
+            <th colspan="2">02（东）</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>房号</th>
+            <th>面积</th>
+            <th>房号</th>
+            <th>面积</th>
+          </tr>
+        </thead>
+        <tbody id="unit4-1-body">
+          <!-- 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 4号楼2单元（中） -->
+    <div class="unit-module">
+      <div class="unit-title">2单元（中）</div>
+      <table class="room-table" id="unit4-2-table">
+        <thead>
+          <tr>
+            <th>楼层</th>
+            <th colspan="2">01（西）</th>
+            <th colspan="2">02（东）</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>房号</th>
+            <th>面积</th>
+            <th>房号</th>
+            <th>面积</th>
+          </tr>
+        </thead>
+        <tbody id="unit4-2-body">
+          <!-- 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 4号楼3单元（东） -->
+    <div class="unit-module">
+      <div class="unit-title">3单元（东）</div>
+      <table class="room-table" id="unit4-3-table">
+        <thead>
+          <tr>
+            <th>楼层</th>
+            <th colspan="2">01（西）</th>
+            <th colspan="2">02（东）</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>房号</th>
+            <th>面积</th>
+            <th>房号</th>
+            <th>面积</th>
+          </tr>
+        </thead>
+        <tbody id="unit4-3-body">
+          <!-- 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 5号楼标题 -->
+    <div class="building-title">5号楼</div>
+
+    <!-- 5号楼1单元（西） -->
+    <div class="unit-module">
+      <div class="unit-title">1单元（西）</div>
+      <table class="room-table" id="unit5-1-table">
+        <thead>
+          <tr>
+            <th>楼层</th>
+            <th colspan="2">01（西）</th>
+            <th colspan="2">02（东）</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>房号</th>
+            <th>面积</th>
+            <th>房号</th>
+            <th>面积</th>
+          </tr>
+        </thead>
+        <tbody id="unit5-1-body">
+          <!-- 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 5号楼2单元（中） -->
+    <div class="unit-module">
+      <div class="unit-title">2单元（中）</div>
+      <table class="room-table" id="unit5-2-table">
+        <thead>
+          <tr>
+            <th>楼层</th>
+            <th colspan="2">01（西）</th>
+            <th colspan="2">02（东）</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>房号</th>
+            <th>面积</th>
+            <th>房号</th>
+            <th>面积</th>
+          </tr>
+        </thead>
+        <tbody id="unit5-2-body">
+          <!-- 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 5号楼3单元（东） -->
+    <div class="unit-module">
+      <div class="unit-title">3单元（东）</div>
+      <table class="room-table" id="unit5-3-table">
+        <thead>
+          <tr>
+            <th>楼层</th>
+            <th colspan="2">01（西）</th>
+            <th colspan="2">02（东）</th>
+          </tr>
+          <tr>
+            <th></th>
+            <th>房号</th>
+            <th>面积</th>
+            <th>房号</th>
+            <th>面积</th>
+          </tr>
+        </thead>
+        <tbody id="unit5-3-body">
+          <!-- 动态生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 车位区域 -->
+    <div class="pw-section">
+      <div class="pw-title">车位</div>
+      
+      <div class="parking-container">
+        <!-- A区车位 -->
+        <div>
+          <div class="pw-subtitle">A区 (A1-A62)</div>
+          <div class="parking-grid" id="parking-a-grid">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+        
+        <!-- B区车位 -->
+        <div>
+          <div class="pw-subtitle">B区 (B8-B19, B43-B48)</div>
+          <div class="parking-grid" id="parking-b-grid">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+        
+        <!-- C区车位 -->
+        <div>
+          <div class="pw-subtitle">C区 (C1-C44)</div>
+          <div class="parking-grid" id="parking-c-grid">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仓房区域 -->
+    <div class="pw-section">
+      <div class="pw-title">仓房</div>
+      
+      <div class="warehouse-container">
+        <!-- 4#仓房 -->
+        <div>
+          <div class="pw-subtitle">4#仓房 (Z1-Z10)</div>
+          <div class="warehouse-grid" id="warehouse-4-grid">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+        
+        <!-- 5#仓房 -->
+        <div>
+          <div class="pw-subtitle">5#仓房 (Z11-Z32)</div>
+          <div class="warehouse-grid" id="warehouse-5-grid">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+        
+        <!-- 其他仓房 -->
+        <div>
+          <div class="pw-subtitle">其他仓房 (Z33-Z39)</div>
+          <div class="warehouse-grid" id="warehouse-other-grid">
+            <!-- 动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 连接状态 -->
+  <div class="connection-status" id="connectionStatus">连接中...</div>
+
+  <script>
+    // WebSocket连接
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${protocol}//${window.location.host}`;
+    // 房源配置（带楼层和面积信息）
+    const ROOM_CONFIG = {
+      "4-1": {
+        title: "1单元（西）",
+        floors: [
+          { floor: "18楼", rooms: [
+            { id: "4-1-1801", display: "1801", area: "139.64" },
+            { id: "4-1-1802", display: "1802", area: "133.64" }
+          ]},
+          { floor: "17楼", rooms: [
+            { id: "4-1-1701", display: "1701", area: "139.64" },
+            { id: "4-1-1702", display: "1702", area: "133.64" }
+          ]},
+          { floor: "16楼", rooms: [
+            { id: "4-1-1601", display: "1601", area: "139.64" },
+            { id: "4-1-1602", display: "1602", area: "133.64" }
+          ]},
+          { floor: "15楼", rooms: [
+            { id: "4-1-1501", display: "1501", area: "139.64" },
+            { id: "4-1-1502", display: "1502", area: "133.64" }
+          ]},
+          { floor: "14楼", rooms: [
+            { id: "4-1-1401", display: "1401", area: "139.64" },
+            { id: "4-1-1402", display: "1402", area: "133.64" }
+          ]},
+          { floor: "13楼", rooms: [
+            { id: "4-1-1301", display: "1301", area: "139.64" },
+            { id: "4-1-1302", display: "1302", area: "133.64" }
+          ]},
+          { floor: "12楼", rooms: [
+            { id: "4-1-1201", display: "1201", area: "139.64" },
+            { id: "4-1-1202", display: "1202", area: "133.64" }
+          ]},
+          { floor: "11楼", rooms: [
+            { id: "4-1-1101", display: "1101", area: "139.64" },
+            { id: "4-1-1102", display: "1102", area: "133.64" }
+          ]},
+          { floor: "10楼", rooms: [
+            { id: "4-1-1001", display: "1001", area: "139.64" },
+            { id: "4-1-1002", display: "1002", area: "133.64" }
+          ]},
+          { floor: "9楼", rooms: [
+            { id: "4-1-901", display: "901", area: "139.64" },
+            { id: "4-1-902", display: "902", area: "133.64" }
+          ]},
+          { floor: "8楼", rooms: [
+            { id: "4-1-801", display: "801", area: "139.64" },
+            { id: "4-1-802", display: "802", area: "133.64" }
+          ]},
+          { floor: "7楼", rooms: [
+            { id: "4-1-701", display: "701", area: "139.64" },
+            { id: "4-1-702", display: "702", area: "133.64" }
+          ]},
+          { floor: "6楼", rooms: [
+            { id: "4-1-601", display: "601", area: "139.64" },
+            { id: "4-1-602", display: "602", area: "133.64" }
+          ]},
+          { floor: "5楼", rooms: [
+            { id: "4-1-501", display: "501", area: "139.64" },
+            { id: "4-1-502", display: "502", area: "133.64" }
+          ]},
+          { floor: "4楼", rooms: [
+            { id: "4-1-401", display: "401", area: "139.64" },
+            { id: "4-1-402", display: "402", area: "133.64" }
+          ]},
+          { floor: "3楼", rooms: [
+            { id: "4-1-301", display: "301", area: "139.64" },
+            { id: "4-1-302", display: "302", area: "133.64" }
+          ]},
+          { floor: "2楼", rooms: [
+            { id: "4-1-201", display: "201", area: "139.64" },
+            { id: "4-1-202", display: "202", area: "133.64" }
+          ]},
+          { floor: "1楼", rooms: [
+            { id: "4-1-101", display: "101", area: "" },
+            { id: "4-1-102", display: "102", area: "" }
+          ]}
+        ]
+      },
+      "4-2": {
+        title: "2单元（中）",
+        floors: [
+          { floor: "18楼", rooms: [
+            { id: "4-2-1801", display: "1801", area: "116.78" },
+            { id: "4-2-1802", display: "1802", area: "101.12" }
+          ]},
+          { floor: "17楼", rooms: [
+            { id: "4-2-1701", display: "1701", area: "116.78" },
+            { id: "4-2-1702", display: "1702", area: "101.12" }
+          ]},
+          { floor: "16楼", rooms: [
+            { id: "4-2-1601", display: "1601", area: "116.78" },
+            { id: "4-2-1602", display: "1602", area: "101.12" }
+          ]},
+          { floor: "15楼", rooms: [
+            { id: "4-2-1501", display: "1501", area: "116.78" },
+            { id: "4-2-1502", display: "1502", area: "101.12" }
+          ]},
+          { floor: "14楼", rooms: [
+            { id: "4-2-1401", display: "1401", area: "116.78" },
+            { id: "4-2-1402", display: "1402", area: "101.12" }
+          ]},
+          { floor: "13楼", rooms: [
+            { id: "4-2-1301", display: "1301", area: "116.78" },
+            { id: "4-2-1302", display: "1302", area: "101.12" }
+          ]},
+          { floor: "12楼", rooms: [
+            { id: "4-2-1201", display: "1201", area: "116.78" },
+            { id: "4-2-1202", display: "1202", area: "101.12" }
+          ]},
+          { floor: "11楼", rooms: [
+            { id: "4-2-1101", display: "1101", area: "116.78" },
+            { id: "4-2-1102", display: "1102", area: "101.12" }
+          ]},
+          { floor: "10楼", rooms: [
+            { id: "4-2-1001", display: "1001", area: "116.78" },
+            { id: "4-2-1002", display: "1002", area: "101.12" }
+          ]},
+          { floor: "9楼", rooms: [
+            { id: "4-2-901", display: "901", area: "116.78" },
+            { id: "4-2-902", display: "902", area: "101.12" }
+          ]},
+          { floor: "8楼", rooms: [
+            { id: "4-2-801", display: "801", area: "116.78" },
+            { id: "4-2-802", display: "802", area: "101.12" }
+          ]},
+          { floor: "7楼", rooms: [
+            { id: "4-2-701", display: "701", area: "116.78" },
+            { id: "4-2-702", display: "702", area: "101.12" }
+          ]},
+          { floor: "6楼", rooms: [
+            { id: "4-2-601", display: "601", area: "116.78" },
+            { id: "4-2-602", display: "602", area: "101.12" }
+          ]},
+          { floor: "5楼", rooms: [
+            { id: "4-2-501", display: "501", area: "116.78" },
+            { id: "4-2-502", display: "502", area: "101.12" }
+          ]},
+          { floor: "4楼", rooms: [
+            { id: "4-2-401", display: "401", area: "116.78" },
+            { id: "4-2-402", display: "402", area: "101.12" }
+          ]},
+          { floor: "3楼", rooms: [
+            { id: "4-2-301", display: "301", area: "116.78" },
+            { id: "4-2-302", display: "302", area: "101.12" }
+          ]},
+          { floor: "2楼", rooms: [
+            { id: "4-2-201", display: "201", area: "116.78" },
+            { id: "4-2-202", display: "202", area: "101.12" }
+          ]},
+          { floor: "1楼", rooms: [
+            { id: "4-2-101", display: "101", area: "" },
+            { id: "4-2-102", display: "102", area: "" }
+          ]}
+        ]
+      },
+      "4-3": {
+        title: "3单元（东）",
+        floors: [
+          { floor: "18楼", rooms: [
+            { id: "4-3-1801", display: "1801", area: "133.64" },
+            { id: "4-3-1802", display: "1802", area: "139.64" }
+          ]},
+          { floor: "17楼", rooms: [
+            { id: "4-3-1701", display: "1701", area: "133.64" },
+            { id: "4-3-1702", display: "1702", area: "139.64" }
+          ]},
+          { floor: "16楼", rooms: [
+            { id: "4-3-1601", display: "1601", area: "133.64" },
+            { id: "4-3-1602", display: "1602", area: "139.64" }
+          ]},
+          { floor: "15楼", rooms: [
+            { id: "4-3-1501", display: "1501", area: "133.64" },
+            { id: "4-3-1502", display: "1502", area: "139.64" }
+          ]},
+          { floor: "14楼", rooms: [
+            { id: "4-3-1401", display: "1401", area: "133.64" },
+            { id: "4-3-1402", display: "1402", area: "139.64" }
+          ]},
+          { floor: "13楼", rooms: [
+            { id: "4-3-1301", display: "1301", area: "133.64" },
+            { id: "4-3-1302", display: "1302", area: "139.64" }
+          ]},
+          { floor: "12楼", rooms: [
+            { id: "4-3-1201", display: "1201", area: "133.64" },
+            { id: "4-3-1202", display: "1202", area: "139.64" }
+          ]},
+          { floor: "11楼", rooms: [
+            { id: "4-3-1101", display: "1101", area: "133.64" },
+            { id: "4-3-1102", display: "1102", area: "139.64" }
+          ]},
+          { floor: "10楼", rooms: [
+            { id: "4-3-1001", display: "1001", area: "133.64" },
+            { id: "4-3-1002", display: "1002", area: "139.64" }
+          ]},
+          { floor: "9楼", rooms: [
+            { id: "4-3-901", display: "901", area: "133.64" },
+            { id: "4-3-902", display: "902", area: "139.64" }
+          ]},
+          { floor: "8楼", rooms: [
+            { id: "4-3-801", display: "801", area: "133.64" },
+            { id: "4-3-802", display: "802", area: "139.64" }
+          ]},
+          { floor: "7楼", rooms: [
+            { id: "4-3-701", display: "701", area: "133.64" },
+            { id: "4-3-702", display: "702", area: "139.64" }
+          ]},
+          { floor: "6楼", rooms: [
+            { id: "4-3-601", display: "601", area: "133.64" },
+            { id: "4-3-602", display: "602", area: "139.64" }
+          ]},
+          { floor: "5楼", rooms: [
+            { id: "4-3-501", display: "501", area: "133.64" },
+            { id: "4-3-502", display: "502", area: "139.64" }
+          ]},
+          { floor: "4楼", rooms: [
+            { id: "4-3-401", display: "401", area: "133.64" },
+            { id: "4-3-402", display: "402", area: "139.64" }
+          ]},
+          { floor: "3楼", rooms: [
+            { id: "4-3-301", display: "301", area: "133.64" },
+            { id: "4-3-302", display: "302", area: "139.64" }
+          ]},
+          { floor: "2楼", rooms: [
+            { id: "4-3-201", display: "201", area: "133.64" },
+            { id: "4-3-202", display: "202", area: "139.64" }
+          ]},
+          { floor: "1楼", rooms: [
+            { id: "4-3-101", display: "101", area: "" },
+            { id: "4-3-102", display: "102", area: "" }
+          ]}
+        ]
+      },
+      "5-1": {
+        title: "1单元（西）",
+        floors: [
+          { floor: "6楼", rooms: [
+            { id: "5-1-601", display: "601", area: "128.56" },
+            { id: "5-1-602", display: "602", area: "118.24" }
+          ]},
+          { floor: "5楼", rooms: [
+            { id: "5-1-501", display: "501", area: "128.56" },
+            { id: "5-1-502", display: "502", area: "118.24" }
+          ]},
+          { floor: "4楼", rooms: [
+            { id: "5-1-401", display: "401", area: "128.56" },
+            { id: "5-1-402", display: "402", area: "118.24" }
+          ]},
+          { floor: "3楼", rooms: [
+            { id: "5-1-301", display: "301", area: "128.56" },
+            { id: "5-1-302", display: "302", area: "118.24" }
+          ]},
+          { floor: "2楼", rooms: [
+            { id: "5-1-201", display: "201", area: "128.56" },
+            { id: "5-1-202", display: "202", area: "118.24" }
+          ]},
+          { floor: "1楼", rooms: [
+            { id: "5-1-101", display: "101", area: "" },
+            { id: "5-1-102", display: "102", area: "" }
+          ]}
+        ]
+      },
+      "5-2": {
+        title: "2单元（中）",
+        floors: [
+          { floor: "6楼", rooms: [
+            { id: "5-2-601", display: "601", area: "105.78" },
+            { id: "5-2-602", display: "602", area: "98.45" }
+          ]},
+          { floor: "5楼", rooms: [
+            { id: "5-2-501", display: "501", area: "105.78" },
+            { id: "5-2-502", display: "502", area: "98.45" }
+          ]},
+          { floor: "4楼", rooms: [
+            { id: "5-2-401", display: "401", area: "105.78" },
+            { id: "5-2-402", display: "402", area: "98.45" }
+          ]},
+          { floor: "3楼", rooms: [
+            { id: "5-2-301", display: "301", area: "105.78" },
+            { id: "5-2-302", display: "302", area: "98.45" }
+          ]},
+          { floor: "2楼", rooms: [
+            { id: "5-2-201", display: "201", area: "105.78" },
+            { id: "5-2-202", display: "202", area: "98.45" }
+          ]},
+          { floor: "1楼", rooms: [
+            { id: "5-2-101", display: "101", area: "" },
+            { id: "5-2-102", display: "102", area: "" }
+          ]}
+        ]
+      },
+      "5-3": {
+        title: "3单元（东）",
+        floors: [
+          { floor: "6楼", rooms: [
+            { id: "5-3-601", display: "601", area: "118.24" },
+            { id: "5-3-602", display: "602", area: "128.56" }
+          ]},
+          { floor: "5楼", rooms: [
+            { id: "5-3-501", display: "501", area: "118.24" },
+            { id: "5-3-502", display: "502", area: "128.56" }
+          ]},
+          { floor: "4楼", rooms: [
+            { id: "5-3-401", display: "401", area: "118.24" },
+            { id: "5-3-402", display: "402", area: "128.56" }
+          ]},
+          { floor: "3楼", rooms: [
+            { id: "5-3-301", display: "301", area: "118.24" },
+            { id: "5-3-302", display: "302", area: "128.56" }
+          ]},
+          { floor: "2楼", rooms: [
+            { id: "5-3-201", display: "201", area: "118.24" },
+            { id: "5-3-202", display: "202", area: "128.56" }
+          ]},
+          { floor: "1楼", rooms: [
+            { id: "5-3-101", display: "101", area: "" },
+            { id: "5-3-102", display: "102", area: "" }
+          ]}
+        ]
+      }
+    };
+
+    // 车位配置（按区域分组）
+    const PARKING_CONFIG = {
+      "A区": [
+        "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9", "A10",
+        "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18", "A19", "A20",
+        "A21", "A22", "A23", "A24", "A25", "A26", "A27", "A28", "A29", "A30",
+        "A31", "A32", "A33", "A34", "A35", "A36", "A37", "A38", "A39", "A40",
+        "A41", "A42", "A43", "A44", "A45", "A46", "A47", "A48", "A49", "A50",
+        "A51", "A52", "A53", "A54", "A55", "A56", "A57", "A58", "A59", "A60",
+        "A61", "A62"
+      ],
+      "B区": [
+        "B8", "B9", "B10", "B11", "B12", "B13", "B14", "B15", "B16", "B17",
+        "B18", "B19", "B43", "B44", "B45", "B46", "B47", "B48"
+      ],
+      "C区": [
+        "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10",
+        "C11", "C12", "C13", "C14", "C15", "C16", "C17", "C18", "C19", "C20",
+        "C21", "C22", "C23", "C24", "C25", "C26", "C27", "C28", "C29", "C30",
+        "C31", "C32", "C33", "C34", "C35", "C36", "C37", "C38", "C39", "C40",
+        "C41", "C42", "C43", "C44"
+      ]
+    };
+
+    // 仓房配置（按区域分组）
+    const WAREHOUSE_CONFIG = {
+      "4#仓房": [
+        "4#下Z1", "4#下Z2", "4#下Z3", "4#下Z4", "4#下Z5", "4#下Z6",
+        "4#下Z7", "4#下Z8", "4#下Z9", "4#下Z10"
+      ],
+      "5#仓房": [
+        "5#下Z11", "5#下Z12", "5#下Z13", "5#下Z14", "5#下Z15", "5#下Z16",
+        "5#下Z17", "5#下Z18", "5#下Z19", "5#下Z20", "5#下Z21", "5#下Z22",
+        "5#下Z23", "5#下Z24", "5#下Z25", "5#下Z26", "5#下Z27", "5#下Z28",
+        "5#下Z29", "5#下Z30", "5#下Z31", "5#下Z32"
+      ],
+      "其他仓房": [
+        "Z33", "Z34", "Z35", "Z36", "Z37", "Z38", "Z39"
+      ]
+    };
+
+    // 房源状态
+    let houseStatus = {};
+
+    // 初始化WebSocket连接
+    function initWebSocket() {
+      try {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}`;
+        ws = new WebSocket(wsUrl);
+        
+        ws.onopen = () => {
+          console.log('WebSocket连接成功');
+          updateConnectionStatus(true);
+          updateSyncStatus('已连接到服务器');
+          
+          // 注册为展示客户端
+          ws.send(JSON.stringify({
+            type: 'register',
+            clientType: 'display'
+          }));
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'init') {
+              // 初始化数据
+              houseStatus = data.data;
+              renderAllRooms();
+              updateSyncStatus('数据加载完成');
+              updateLastUpdateTime();
+            }
+            
+            if (data.type === 'status-update') {
+              // 单个更新
+              const { roomId, isSold } = data;
+              houseStatus[roomId] = isSold;
+              updateRoomStatus(roomId, isSold);
+              updateLastUpdateTime();
+              updateSyncStatus('数据已更新');
+            }
+            
+            if (data.type === 'full-update') {
+              // 全量更新
+              houseStatus = data.data;
+              renderAllRooms();
+              updateLastUpdateTime();
+              updateSyncStatus('数据已同步');
+            }
+            
+          } catch (error) {
+            console.error('处理消息错误:', error);
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log('WebSocket连接断开');
+          updateConnectionStatus(false);
+          updateSyncStatus('连接断开，正在重连...');
+          
+          // 5秒后重连
+          clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(initWebSocket, 5000);
+        };
+        
+        ws.onerror = (error) => {
+          console.error('WebSocket错误:', error);
+          updateConnectionStatus(false);
+        };
+        
+      } catch (error) {
+        console.error('初始化WebSocket失败:', error);
+        updateConnectionStatus(false);
+        setTimeout(initWebSocket, 5000);
+      }
+    }
+
+    // 更新连接状态
+    function updateConnectionStatus(connected) {
+      const statusElement = document.getElementById('connectionStatus');
+      if (connected) {
+        statusElement.textContent = '已连接';
+        statusElement.className = 'connection-status connected';
+      } else {
+        statusElement.textContent = '未连接';
+        statusElement.className = 'connection-status disconnected';
+      }
+    }
+
+    // 更新同步状态
+    function updateSyncStatus(message) {
+      const syncElement = document.getElementById('syncStatus');
+      if (syncElement) {
+        syncElement.textContent = message;
+      }
+    }
+
+    // 更新最后更新时间
+    function updateLastUpdateTime() {
+      const now = new Date();
+      const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+      const dateElement = document.getElementById('lastUpdate');
+      if (dateElement) {
+        dateElement.textContent = timeString;
+      }
+    }
+
+  // 渲染所有房源
+// 渲染所有房源
+function renderAllRooms() {
+  console.log('开始渲染所有房源，houseStatus数量:', Object.keys(houseStatus).length);
+  
+  // 渲染每个单元的表格
+  for (const [unitId, unitConfig] of Object.entries(ROOM_CONFIG)) {
+    // 重要：保持横杠，与HTML中的ID一致
+    const tbodyId = `unit${unitId}-body`;  // 原来是 unit${unitId.replace('-', '')}-body
+    console.log(`尝试渲染单元 ${unitId}, 查找tbody: ${tbodyId}`);
+    
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) {
+      console.log(`未找到tbody: ${tbodyId}`);
+      continue;
+    }
+    
+    console.log(`找到tbody，开始渲染 ${unitId} 的 ${unitConfig.floors.length} 层`);
+    tbody.innerHTML = '';
+    
+    // 遍历每个楼层
+    unitConfig.floors.forEach(floorData => {
+      const row = document.createElement('tr');
+      
+      // 楼层单元格
+      const floorCell = document.createElement('td');
+      floorCell.textContent = floorData.floor;
+      row.appendChild(floorCell);
+      
+      // 两个房间的单元格
+      floorData.rooms.forEach(room => {
+        const isSold = houseStatus[room.id] || false;
+        
+        // 房号单元格
+        const roomCell = document.createElement('td');
+        roomCell.className = isSold ? 'sold' : '';
+        roomCell.textContent = room.display;
+        roomCell.dataset.id = room.id;
+        row.appendChild(roomCell);
+        
+        // 面积单元格
+        const areaCell = document.createElement('td');
+        areaCell.className = isSold ? 'sold' : '';
+        areaCell.textContent = room.area;
+        areaCell.dataset.id = room.id;
+        row.appendChild(areaCell);
+      });
+      
+      tbody.appendChild(row);
+    });
+  }
+  
+  console.log('表格渲染完成，开始渲染车位和仓房...');
+  
+  // 渲染车位（按区域）
+  renderParkingByArea();
+  
+  // 渲染仓房（按区域）
+  renderWarehouseByArea();
+  
+  console.log('所有渲染完成');
+}
+    // 按区域渲染车位
+    function renderParkingByArea() {
+      for (const [areaName, parkings] of Object.entries(PARKING_CONFIG)) {
+        let gridId;
+        if (areaName === "A区") gridId = "parking-a-grid";
+        else if (areaName === "B区") gridId = "parking-b-grid";
+        else if (areaName === "C区") gridId = "parking-c-grid";
+        else continue;
+        
+        const grid = document.getElementById(gridId);
+        if (!grid) continue;
+        
+        grid.innerHTML = '';
+        
+        parkings.forEach(parking => {
+          const parkingId = `车位-${parking}`;
+          const isSold = houseStatus[parkingId] || false;
+          const parkingElement = document.createElement('div');
+          parkingElement.className = `parking-item ${isSold ? 'sold' : ''}`;
+          parkingElement.textContent = parking;
+          parkingElement.dataset.id = parkingId;
+          grid.appendChild(parkingElement);
+        });
+      }
+    }
+
+    // 按区域渲染仓房
+    function renderWarehouseByArea() {
+      for (const [areaName, warehouses] of Object.entries(WAREHOUSE_CONFIG)) {
+        let gridId;
+        if (areaName === "4#仓房") gridId = "warehouse-4-grid";
+        else if (areaName === "5#仓房") gridId = "warehouse-5-grid";
+        else if (areaName === "其他仓房") gridId = "warehouse-other-grid";
+        else continue;
+        
+        const grid = document.getElementById(gridId);
+        if (!grid) continue;
+        
+        grid.innerHTML = '';
+        
+        warehouses.forEach(warehouse => {
+          let warehouseId;
+          if (warehouse.startsWith('4#')) {
+            warehouseId = `仓房-${warehouse}`;
+          } else if (warehouse.startsWith('5#')) {
+            warehouseId = `仓房-${warehouse}`;
+          } else {
+            warehouseId = `仓房-${warehouse}`;
+          }
+          
+          const isSold = houseStatus[warehouseId] || false;
+          const warehouseElement = document.createElement('div');
+          warehouseElement.className = `warehouse-item ${isSold ? 'sold' : ''}`;
+          warehouseElement.textContent = warehouse;
+          warehouseElement.dataset.id = warehouseId;
+          grid.appendChild(warehouseElement);
+        });
+      }
+    }
+
+    // 更新单个房源状态
+    function updateRoomStatus(roomId, isSold) {
+      // 更新表格中的房源
+      const roomCells = document.querySelectorAll(`[data-id="${roomId}"]`);
+      roomCells.forEach(cell => {
+        if (isSold) {
+          cell.classList.add('sold');
+        } else {
+          cell.classList.remove('sold');
+        }
+      });
+      
+      // 更新车位
+      const parkingItem = document.querySelector(`.parking-item[data-id="${roomId}"]`);
+      if (parkingItem) {
+        if (isSold) {
+          parkingItem.classList.add('sold');
+        } else {
+          parkingItem.classList.remove('sold');
+        }
+      }
+      
+      // 更新仓房
+      const warehouseItem = document.querySelector(`.warehouse-item[data-id="${roomId}"]`);
+      if (warehouseItem) {
+        if (isSold) {
+          warehouseItem.classList.add('sold');
+        } else {
+          warehouseItem.classList.remove('sold');
+        }
+      }
+    }
+
+    // 降级方案：通过HTTP API获取初始数据
+    async function fetchInitialData() {
+      try {
+        const response = await fetch('/api/status');
+        if (response.ok) {
+          houseStatus = await response.json();
+          renderAllRooms();
+          updateSyncStatus('数据加载完成 (HTTP)');
+          updateLastUpdateTime();
+        }
+      } catch (error) {
+        console.error('获取初始数据失败:', error);
+      }
+    }
+
+    // 页面加载时初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      // 先尝试通过HTTP获取数据
+      fetchInitialData();
+      // 然后建立WebSocket连接
+      initWebSocket();
+    });
+
+    // 页面关闭时清理
+    window.addEventListener('beforeunload', () => {
+      if (ws) {
+        ws.close();
+      }
+      clearTimeout(reconnectTimer);
+    });
+
+    // 添加一个简单的自动重连检测
+    setInterval(() => {
+      if (ws && ws.readyState === WebSocket.CLOSED) {
+        console.log('检测到连接断开，尝试重连...');
+        initWebSocket();
+      }
+    }, 10000);
+  </script>
+</body>
+</html>

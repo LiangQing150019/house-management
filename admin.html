@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中兴翡翠之光 - 房源管理后台</title>
+  <style>
+    /* 保持原有样式不变 */
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+      font-family: "Microsoft Yahei", sans-serif; 
+    }
+    body { 
+      padding: 20px; 
+      background: #f8f9fa; 
+      color: #333;
+    }
+    .container { 
+      max-width: 1400px; 
+      margin: 0 auto; 
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e53935;
+    }
+    .header h1 {
+      font-size: 28px;
+      color: #e53935;
+      margin-bottom: 10px;
+    }
+    .header p {
+      font-size: 16px;
+      color: #666;
+    }
+    .module {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    }
+    .module-title {
+      font-size: 22px;
+      font-weight: bold;
+      color: #003366;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .module-title span {
+      display: inline-block;
+      width: 8px;
+      height: 24px;
+      background: #e53935;
+      border-radius: 4px;
+    }
+    .room-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 12px;
+    }
+    .room-item {
+      padding: 15px 10px;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid #ddd;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .room-item.available {
+      background: #f0f9ff;
+      border-color: #94d8ff;
+      color: #0066cc;
+    }
+    .room-item.available:hover {
+      background: #e6f7ff;
+      border-color: #40a9ff;
+      transform: translateY(-2px);
+    }
+    .room-item.sold {
+      background: #fee2e2;
+      border-color: #f87171;
+      color: #dc2626;
+    }
+    .room-item.sold:hover {
+      background: #fecaca;
+      border-color: #ef4444;
+      transform: translateY(-2px);
+    }
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 24px;
+      border-radius: 8px;
+      color: white;
+      font-size: 15px;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+    .toast.success {
+      background: #10b981;
+    }
+    .toast.error {
+      background: #ef4444;
+    }
+    .status-bar {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.8);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .status-bar.connected {
+      background: rgba(16, 185, 129, 0.8);
+    }
+    .status-bar.disconnected {
+      background: rgba(239, 68, 68, 0.8);
+    }
+    @media (max-width: 768px) {
+      .room-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      }
+      .room-item {
+        padding: 10px 5px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="container">
+    <!-- 头部 -->
+    <div class="header">
+      <h1>中兴翡翠之光 - 房源管理系统</h1>
+      <p>点击房源格子切换「已售/未售」状态，实时同步到展示页面</p>
+      <div style="margin-top:15px;">
+        <button onclick="exportSoldData()" style="padding:8px 15px; margin-right:10px; background:#10b981; color:white; border:none; border-radius:4px; cursor:pointer;">导出已售数据</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importSoldData(event)">
+        <button onclick="document.getElementById('importFile').click()" style="padding:8px 15px; background:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer;">导入已售数据</button>
+        <button onclick="resetAllStatus()" style="padding:8px 15px; margin-left:10px; background:#f59e0b; color:white; border:none; border-radius:4px; cursor:pointer;">重置所有状态</button>
+      </div>
+    </div>
+
+    <!-- 4号楼模块 -->
+    <div class="module">
+      <div class="module-title"><span></span>4号楼 1单元</div>
+      <div class="room-grid" id="building4-1"></div>
+    </div>
+    <div class="module">
+      <div class="module-title"><span></span>4号楼 2单元</div>
+      <div class="room-grid" id="building4-2"></div>
+    </div>
+    <div class="module">
+      <div class="module-title"><span></span>4号楼 3单元</div>
+      <div class="room-grid" id="building4-3"></div>
+    </div>
+
+    <!-- 5号楼模块 -->
+    <div class="module">
+      <div class="module-title"><span></span>5号楼 1单元</div>
+      <div class="room-grid" id="building5-1"></div>
+    </div>
+    <div class="module">
+      <div class="module-title"><span></span>5号楼 2单元</div>
+      <div class="room-grid" id="building5-2"></div>
+    </div>
+    <div class="module">
+      <div class="module-title"><span></span>5号楼 3单元</div>
+      <div class="room-grid" id="building5-3"></div>
+    </div>
+
+    <!-- 车位模块 -->
+    <div class="module">
+      <div class="module-title"><span></span>车位</div>
+      <div class="room-grid" id="parking"></div>
+    </div>
+
+    <!-- 仓房模块 -->
+    <div class="module">
+      <div class="module-title"><span></span>仓房</div>
+      <div class="room-grid" id="warehouse"></div>
+    </div>
+
+    <!-- 提示框 -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- 连接状态 -->
+    <div class="status-bar" id="statusBar">连接中...</div>
+  </div>
+
+<script>
+  // 调试函数
+function debugRooms() {
+  console.log('=== 调试信息 ===');
+  console.log('总房间数量:', Object.keys(allRoomStatus).length);
+  
+  // 统计各类型房间数量
+  const building4 = Object.keys(allRoomStatus).filter(id => id.startsWith('4-')).length;
+  const building5 = Object.keys(allRoomStatus).filter(id => id.startsWith('5-')).length;
+  const parking = Object.keys(allRoomStatus).filter(id => id.includes('车位-')).length;
+  const warehouse = Object.keys(allRoomStatus).filter(id => id.includes('仓房-')).length;
+  
+  console.log(`4号楼: ${building4}个, 5号楼: ${building5}个, 车位: ${parking}个, 仓房: ${warehouse}个`);
+  
+  // 检查示例房间
+  const sampleIds = ['4-1-1801', '4-1-101', '5-1-601', '5-1-101'];
+  sampleIds.forEach(id => {
+    console.log(`${id}: ${allRoomStatus.hasOwnProperty(id) ? '存在' : '不存在'}`);
+  });
+}
+  // WebSocket连接
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${protocol}//${window.location.host}`;
+  
+  // 房源配置（保持原有配置）
+  const ROOM_CONFIG = {
+    "building4-1": [
+      { display: "1801", id: "4-1-1801" }, { display: "1802", id: "4-1-1802" },
+      { display: "1701", id: "4-1-1701" }, { display: "1702", id: "4-1-1702" },
+      { display: "1601", id: "4-1-1601" }, { display: "1602", id: "4-1-1602" },
+      { display: "1501", id: "4-1-1501" }, { display: "1502", id: "4-1-1502" },
+      { display: "1401", id: "4-1-1401" }, { display: "1402", id: "4-1-1402" },
+      { display: "1301", id: "4-1-1301" }, { display: "1302", id: "4-1-1302" },
+      { display: "1201", id: "4-1-1201" }, { display: "1202", id: "4-1-1202" },
+      { display: "1101", id: "4-1-1101" }, { display: "1102", id: "4-1-1102" },
+      { display: "1001", id: "4-1-1001" }, { display: "1002", id: "4-1-1002" },
+      { display: "901", id: "4-1-901" }, { display: "902", id: "4-1-902" },
+      { display: "801", id: "4-1-801" }, { display: "802", id: "4-1-802" },
+      { display: "701", id: "4-1-701" }, { display: "702", id: "4-1-702" },
+      { display: "601", id: "4-1-601" }, { display: "602", id: "4-1-602" },
+      { display: "501", id: "4-1-501" }, { display: "502", id: "4-1-502" },
+      { display: "401", id: "4-1-401" }, { display: "402", id: "4-1-402" },
+      { display: "301", id: "4-1-301" }, { display: "302", id: "4-1-302" },
+      { display: "201", id: "4-1-201" }, { display: "202", id: "4-1-202" },
+      { display: "101", id: "4-1-101" }, { display: "102", id: "4-1-102" }
+    ],
+    "building4-2": [
+      { display: "1801", id: "4-2-1801" }, { display: "1802", id: "4-2-1802" },
+      { display: "1701", id: "4-2-1701" }, { display: "1702", id: "4-2-1702" },
+      { display: "1601", id: "4-2-1601" }, { display: "1602", id: "4-2-1602" },
+      { display: "1501", id: "4-2-1501" }, { display: "1502", id: "4-2-1502" },
+      { display: "1401", id: "4-2-1401" }, { display: "1402", id: "4-2-1402" },
+      { display: "1301", id: "4-2-1301" }, { display: "1302", id: "4-2-1302" },
+      { display: "1201", id: "4-2-1201" }, { display: "1202", id: "4-2-1202" },
+      { display: "1101", id: "4-2-1101" }, { display: "1102", id: "4-2-1102" },
+      { display: "1001", id: "4-2-1001" }, { display: "1002", id: "4-2-1002" },
+      { display: "901", id: "4-2-901" }, { display: "902", id: "4-2-902" },
+      { display: "801", id: "4-2-801" }, { display: "802", id: "4-2-802" },
+      { display: "701", id: "4-2-701" }, { display: "702", id: "4-2-702" },
+      { display: "601", id: "4-2-601" }, { display: "602", id: "4-2-602" },
+      { display: "501", id: "4-2-501" }, { display: "502", id: "4-2-502" },
+      { display: "401", id: "4-2-401" }, { display: "402", id: "4-2-402" },
+      { display: "301", id: "4-2-301" }, { display: "302", id: "4-2-302" },
+      { display: "201", id: "4-2-201" }, { display: "202", id: "4-2-202" },
+      { display: "101", id: "4-2-101" }, { display: "102", id: "4-2-102" }
+    ],
+    "building4-3": [
+      { display: "1801", id: "4-3-1801" }, { display: "1802", id: "4-3-1802" },
+      { display: "1701", id: "4-3-1701" }, { display: "1702", id: "4-3-1702" },
+      { display: "1601", id: "4-3-1601" }, { display: "1602", id: "4-3-1602" },
+      { display: "1501", id: "4-3-1501" }, { display: "1502", id: "4-3-1502" },
+      { display: "1401", id: "4-3-1401" }, { display: "1402", id: "4-3-1402" },
+      { display: "1301", id: "4-3-1301" }, { display: "1302", id: "4-3-1302" },
+      { display: "1201", id: "4-3-1201" }, { display: "1202", id: "4-3-1202" },
+      { display: "1101", id: "4-3-1101" }, { display: "1102", id: "4-3-1102" },
+      { display: "1001", id: "4-3-1001" }, { display: "1002", id: "4-3-1002" },
+      { display: "901", id: "4-3-901" }, { display: "902", id: "4-3-902" },
+      { display: "801", id: "4-3-801" }, { display: "802", id: "4-3-802" },
+      { display: "701", id: "4-3-701" }, { display: "702", id: "4-3-702" },
+      { display: "601", id: "4-3-601" }, { display: "602", id: "4-3-602" },
+      { display: "501", id: "4-3-501" }, { display: "502", id: "4-3-502" },
+      { display: "401", id: "4-3-401" }, { display: "402", id: "4-3-402" },
+      { display: "301", id: "4-3-301" }, { display: "302", id: "4-3-302" },
+      { display: "201", id: "4-3-201" }, { display: "202", id: "4-3-202" },
+      { display: "101", id: "4-3-101" }, { display: "102", id: "4-3-102" }
+    ],
+    "building5-1": [
+      { display: "601", id: "5-1-601" }, { display: "602", id: "5-1-602" },
+      { display: "501", id: "5-1-501" }, { display: "502", id: "5-1-502" },
+      { display: "401", id: "5-1-401" }, { display: "402", id: "5-1-402" },
+      { display: "301", id: "5-1-301" }, { display: "302", id: "5-1-302" },
+      { display: "201", id: "5-1-201" }, { display: "202", id: "5-1-202" },
+      { display: "101", id: "5-1-101" }, { display: "102", id: "5-1-102" }
+    ],
+    "building5-2": [
+      { display: "601", id: "5-2-601" }, { display: "602", id: "5-2-602" },
+      { display: "501", id: "5-2-501" }, { display: "502", id: "5-2-502" },
+      { display: "401", id: "5-2-401" }, { display: "402", id: "5-2-402" },
+      { display: "301", id: "5-2-301" }, { display: "302", id: "5-2-302" },
+      { display: "201", id: "5-2-201" }, { display: "202", id: "5-2-202" },
+      { display: "101", id: "5-2-101" }, { display: "102", id: "5-2-102" }
+    ],
+    "building5-3": [
+      { display: "601", id: "5-3-601" }, { display: "602", id: "5-3-602" },
+      { display: "501", id: "5-3-501" }, { display: "502", id: "5-3-502" },
+      { display: "401", id: "5-3-401" }, { display: "402", id: "5-3-402" },
+      { display: "301", id: "5-3-301" }, { display: "302", id: "5-3-302" },
+      { display: "201", id: "5-3-201" }, { display: "202", id: "5-3-202" },
+      { display: "101", id: "5-3-101" }, { display: "102", id: "5-3-102" }
+    ],
+    "parking": [
+      { display: "A1", id: "车位-A1" }, { display: "A2", id: "车位-A2" },
+      { display: "A3", id: "车位-A3" }, { display: "A4", id: "车位-A4" },
+      { display: "A5", id: "车位-A5" }, { display: "A6", id: "车位-A6" },
+      { display: "A7", id: "车位-A7" }, { display: "A8", id: "车位-A8" },
+      { display: "A9", id: "车位-A9" }, { display: "A10", id: "车位-A10" },
+      { display: "A11", id: "车位-A11" }, { display: "A12", id: "车位-A12" },
+      { display: "A13", id: "车位-A13" }, { display: "A14", id: "车位-A14" },
+      { display: "A15", id: "车位-A15" }, { display: "A16", id: "车位-A16" },
+      { display: "A17", id: "车位-A17" }, { display: "A18", id: "车位-A18" },
+      { display: "A19", id: "车位-A19" }, { display: "A20", id: "车位-A20" },
+      { display: "A21", id: "车位-A21" }, { display: "A22", id: "车位-A22" },
+      { display: "A23", id: "车位-A23" }, { display: "A24", id: "车位-A24" },
+      { display: "A25", id: "车位-A25" }, { display: "A26", id: "车位-A26" },
+      { display: "A27", id: "车位-A27" }, { display: "A28", id: "车位-A28" },
+      { display: "A29", id: "车位-A29" }, { display: "A30", id: "车位-A30" },
+      { display: "A31", id: "车位-A31" }, { display: "A32", id: "车位-A32" },
+      { display: "A33", id: "车位-A33" }, { display: "A34", id: "车位-A34" },
+      { display: "A35", id: "车位-A35" }, { display: "A36", id: "车位-A36" },
+      { display: "A37", id: "车位-A37" }, { display: "A38", id: "车位-A38" },
+      { display: "A39", id: "车位-A39" }, { display: "A40", id: "车位-A40" },
+      { display: "A41", id: "车位-A41" }, { display: "A42", id: "车位-A42" },
+      { display: "A43", id: "车位-A43" }, { display: "A44", id: "车位-A44" },
+      { display: "A45", id: "车位-A45" }, { display: "A46", id: "车位-A46" },
+      { display: "A47", id: "车位-A47" }, { display: "A48", id: "车位-A48" },
+      { display: "A49", id: "车位-A49" }, { display: "A50", id: "车位-A50" },
+      { display: "A51", id: "车位-A51" }, { display: "A52", id: "车位-A52" },
+      { display: "A53", id: "车位-A53" }, { display: "A54", id: "车位-A54" },
+      { display: "A55", id: "车位-A55" }, { display: "A56", id: "车位-A56" },
+      { display: "A57", id: "车位-A57" }, { display: "A58", id: "车位-A58" },
+      { display: "A59", id: "车位-A59" }, { display: "A60", id: "车位-A60" },
+      { display: "A61", id: "车位-A61" }, { display: "A62", id: "车位-A62" },
+      { display: "B8", id: "车位-B8" }, { display: "B9", id: "车位-B9" },
+      { display: "B10", id: "车位-B10" }, { display: "B11", id: "车位-B11" },
+      { display: "B12", id: "车位-B12" }, { display: "B13", id: "车位-B13" },
+      { display: "B14", id: "车位-B14" }, { display: "B15", id: "车位-B15" },
+      { display: "B16", id: "车位-B16" }, { display: "B17", id: "车位-B17" },
+      { display: "B18", id: "车位-B18" }, { display: "B19", id: "车位-B19" },
+      { display: "B43", id: "车位-B43" }, { display: "B44", id: "车位-B44" },
+      { display: "B45", id: "车位-B45" }, { display: "B46", id: "车位-B46" },
+      { display: "B47", id: "车位-B47" }, { display: "B48", id: "车位-B48" },
+      { display: "C1", id: "车位-C1" }, { display: "C2", id: "车位-C2" },
+      { display: "C3", id: "车位-C3" }, { display: "C4", id: "车位-C4" },
+      { display: "C5", id: "车位-C5" }, { display: "C6", id: "车位-C6" },
+      { display: "C7", id: "车位-C7" }, { display: "C8", id: "车位-C8" },
+      { display: "C9", id: "车位-C9" }, { display: "C10", id: "车位-C10" },
+      { display: "C11", id: "车位-C11" }, { display: "C12", id: "车位-C12" },
+      { display: "C13", id: "车位-C13" }, { display: "C14", id: "车位-C14" },
+      { display: "C15", id: "车位-C15" }, { display: "C16", id: "车位-C16" },
+      { display: "C17", id: "车位-C17" }, { display: "C18", id: "车位-C18" },
+      { display: "C19", id: "车位-C19" }, { display: "C20", id: "车位-C20" },
+      { display: "C21", id: "车位-C21" }, { display: "C22", id: "车位-C22" },
+      { display: "C23", id: "车位-C23" }, { display: "C24", id: "车位-C24" },
+      { display: "C25", id: "车位-C25" }, { display: "C26", id: "车位-C26" },
+      { display: "C27", id: "车位-C27" }, { display: "C28", id: "车位-C28" },
+      { display: "C29", id: "车位-C29" }, { display: "C30", id: "车位-C30" },
+      { display: "C31", id: "车位-C31" }, { display: "C32", id: "车位-C32" },
+      { display: "C33", id: "车位-C33" }, { display: "C34", id: "车位-C34" },
+      { display: "C35", id: "车位-C35" }, { display: "C36", id: "车位-C36" },
+      { display: "C37", id: "车位-C37" }, { display: "C38", id: "车位-C38" },
+      { display: "C39", id: "车位-C39" }, { display: "C40", id: "车位-C40" },
+      { display: "C41", id: "车位-C41" }, { display: "C42", id: "车位-C42" },
+      { display: "C43", id: "车位-C43" }, { display: "C44", id: "车位-C44" }
+    ],
+    "warehouse": [
+      { display: "4#下Z1", id: "仓房-4#下Z1" }, { display: "4#下Z2", id: "仓房-4#下Z2" },
+      { display: "4#下Z3", id: "仓房-4#下Z3" }, { display: "4#下Z4", id: "仓房-4#下Z4" },
+      { display: "4#下Z5", id: "仓房-4#下Z5" }, { display: "4#下Z6", id: "仓房-4#下Z6" },
+      { display: "4#下Z7", id: "仓房-4#下Z7" }, { display: "4#下Z8", id: "仓房-4#下Z8" },
+      { display: "4#下Z9", id: "仓房-4#下Z9" }, { display: "4#下Z10", id: "仓房-4#下Z10" },
+      { display: "5#下Z11", id: "仓房-5#下Z11" }, { display: "5#下Z12", id: "仓房-5#下Z12" },
+      { display: "5#下Z13", id: "仓房-5#下Z13" }, { display: "5#下Z14", id: "仓房-5#下Z14" },
+      { display: "5#下Z15", id: "仓房-5#下Z15" }, { display: "5#下Z16", id: "仓房-5#下Z16" },
+      { display: "5#下Z17", id: "仓房-5#下Z17" }, { display: "5#下Z18", id: "仓房-5#下Z18" },
+      { display: "5#下Z19", id: "仓房-5#下Z19" }, { display: "5#下Z20", id: "仓房-5#下Z20" },
+      { display: "5#下Z21", id: "仓房-5#下Z21" }, { display: "5#下Z22", id: "仓房-5#下Z22" },
+      { display: "5#下Z23", id: "仓房-5#下Z23" }, { display: "5#下Z24", id: "仓房-5#下Z24" },
+      { display: "5#下Z25", id: "仓房-5#下Z25" }, { display: "5#下Z26", id: "仓房-5#下Z26" },
+      { display: "5#下Z27", id: "仓房-5#下Z27" }, { display: "5#下Z28", id: "仓房-5#下Z28" },
+      { display: "5#下Z29", id: "仓房-5#下Z29" }, { display: "5#下Z30", id: "仓房-5#下Z30" },
+      { display: "5#下Z31", id: "仓房-5#下Z31" }, { display: "5#下Z32", id: "仓房-5#下Z32" },
+      { display: "Z33", id: "仓房-Z33" }, { display: "Z34", id: "仓房-Z34" },
+      { display: "Z35", id: "仓房-Z35" }, { display: "Z36", id: "仓房-Z36" },
+      { display: "Z37", id: "仓房-Z37" }, { display: "Z38", id: "仓房-Z38" },
+      { display: "Z39", id: "仓房-Z39" }
+    ]
+  };
+
+  // 全局房源状态
+  let allRoomStatus = {};
+
+  // 初始化WebSocket连接
+  function initWebSocket() {
+    try {
+      ws = new WebSocket(WS_URL);
+      
+      ws.onopen = () => {
+        console.log('WebSocket连接成功');
+        updateStatusBar(true);
+        showToast('已连接到服务器', 'success');
+        
+        // 注册为管理员客户端
+        ws.send(JSON.stringify({
+          type: 'register',
+          clientType: 'admin'
+        }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (data.type === 'init') {
+            // 初始化房源状态
+            allRoomStatus = data.data;
+            renderAllRooms();
+            showToast('数据加载完成', 'success');
+          }
+          
+          if (data.type === 'update-success') {
+            // 单个更新成功
+            const { roomId, isSold } = data;
+            allRoomStatus[roomId] = isSold;
+            updateRoomElement(roomId, isSold);
+            showToast(`${roomId} 状态已更新`, 'success');
+          }
+          
+          if (data.type === 'import-success') {
+            // 批量导入成功
+            showToast('数据导入成功，已同步到所有展示页面', 'success');
+          }
+          
+        } catch (error) {
+          console.error('处理消息错误:', error);
+        }
+      };
+      
+      ws.onclose = () => {
+        console.log('WebSocket连接断开');
+        updateStatusBar(false);
+        showToast('连接断开，正在重连...', 'error');
+        
+        // 5秒后重连
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(initWebSocket, 5000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket错误:', error);
+        updateStatusBar(false);
+      };
+      
+    } catch (error) {
+      console.error('初始化WebSocket失败:', error);
+      updateStatusBar(false);
+      setTimeout(initWebSocket, 5000);
+    }
+  }
+
+  // 更新状态栏
+  function updateStatusBar(connected) {
+    const statusBar = document.getElementById('statusBar');
+    if (connected) {
+      statusBar.textContent = '已连接';
+      statusBar.className = 'status-bar connected';
+    } else {
+      statusBar.textContent = '未连接';
+      statusBar.className = 'status-bar disconnected';
+    }
+  }
+
+  // 渲染所有房源
+  function renderAllRooms() {
+    for (const [buildingId, rooms] of Object.entries(ROOM_CONFIG)) {
+      const container = document.getElementById(buildingId);
+      if (!container) continue;
+      
+      container.innerHTML = '';
+      
+      rooms.forEach(room => {
+        const isSold = allRoomStatus[room.id] || false;
+        const roomElement = document.createElement('div');
+        roomElement.className = `room-item ${isSold ? 'sold' : 'available'}`;
+        roomElement.textContent = `${room.display}${isSold ? '（已售）' : '（可售）'}`;
+        roomElement.dataset.id = room.id;
+        
+        roomElement.addEventListener('click', () => {
+          toggleRoomStatus(room.id, roomElement);
+        });
+        
+        container.appendChild(roomElement);
+      });
+    }
+  }
+
+  // 更新单个房源元素
+  function updateRoomElement(roomId, isSold) {
+    const roomElement = document.querySelector(`[data-id="${roomId}"]`);
+    if (roomElement) {
+      roomElement.className = `room-item ${isSold ? 'sold' : 'available'}`;
+      const displayText = roomElement.textContent.replace('（已售）', '').replace('（可售）', '');
+      roomElement.textContent = `${displayText}${isSold ? '（已售）' : '（可售）'}`;
+    }
+  }
+
+  // 切换房源状态（移除仓房限制）
+  function toggleRoomStatus(roomId, roomElement) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      showToast('连接未就绪，请稍后重试', 'error');
+      return;
+    }
+    
+    const currentIsSold = allRoomStatus[roomId] || false;
+    const newIsSold = !currentIsSold;
+    
+    // 发送更新请求
+    ws.send(JSON.stringify({
+      type: 'update-status',
+      roomId,
+      isSold: newIsSold
+    }));
+    
+    // 临时更新UI（服务器确认后会正式更新）
+    roomElement.className = `room-item ${newIsSold ? 'sold' : 'available'}`;
+    const displayText = roomElement.textContent.replace('（已售）', '').replace('（可售）', '');
+    roomElement.textContent = `${displayText}${newIsSold ? '（已售）' : '（可售）'}`;
+  }
+
+  // 显示提示
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  // 导出数据
+  async function exportSoldData() {
+    try {
+      const response = await fetch('/api/export');
+      const data = await response.json();
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `房源已售状态_${new Date().getTime()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      showToast('已售数据导出成功', 'success');
+    } catch (error) {
+      showToast('导出失败：' + error.message, 'error');
+      console.error('导出失败:', error);
+    }
+  }
+
+  // 导入数据
+  function importSoldData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        
+        if (!data.soldRooms || !data.soldPw) {
+          throw new Error('文件格式不正确');
+        }
+        
+        // 通过WebSocket发送批量导入请求
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'batch-import',
+            soldRooms: data.soldRooms,
+            soldPw: data.soldPw
+          }));
+        } else {
+          // 降级：使用HTTP API
+          const response = await fetch('/api/import', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          
+          if (response.ok) {
+            showToast('数据导入成功', 'success');
+            // 重新加载数据
+            const statusResponse = await fetch('/api/status');
+            allRoomStatus = await statusResponse.json();
+            renderAllRooms();
+          } else {
+            throw new Error('导入失败');
+          }
+        }
+        
+        event.target.value = '';
+      } catch (error) {
+        showToast('导入失败：' + error.message, 'error');
+        console.error('导入失败:', error);
+        event.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // 重置所有状态
+  async function resetAllStatus() {
+    if (!confirm('确定要重置所有房源状态为"可售"吗？')) return;
+    
+    try {
+      // 通过WebSocket发送批量导入空数据
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'batch-import',
+          soldRooms: [],
+          soldPw: []
+        }));
+      } else {
+        // 降级：使用HTTP API
+        const response = await fetch('/api/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ soldRooms: [], soldPw: [] })
+        });
+        
+        if (response.ok) {
+          showToast('已重置所有状态', 'success');
+          // 重新加载数据
+          const statusResponse = await fetch('/api/status');
+          allRoomStatus = await statusResponse.json();
+          renderAllRooms();
+        } else {
+          throw new Error('重置失败');
+        }
+      }
+    } catch (error) {
+      showToast('重置失败：' + error.message, 'error');
+      console.error('重置失败:', error);
+    }
+  }
+
+  // 页面加载时初始化
+  window.addEventListener('DOMContentLoaded', () => {
+    initWebSocket();
+  });
+
+  // 页面关闭时清理
+  window.addEventListener('beforeunload', () => {
+    if (ws) {
+      ws.close();
+    }
+    clearTimeout(reconnectTimer);
+  });
+</script>
+</body>
+</html>

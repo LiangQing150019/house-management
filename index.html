@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>中兴翡翠之光 - 入口页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Microsoft Yahei", sans-serif;
+    }
+    body {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: #f8f9fa;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-left: 5px solid #e53935;
+    }
+    .card h2 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      text-align: center;
+      background: #e53935;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-size: 18px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .btn:hover {
+      background: #c62828;
+    }
+    .btn-admin {
+      background: #003366;
+    }
+    .btn-admin:hover {
+      background: #002244;
+    }
+    .info {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .info h3 {
+      color: #1565c0;
+      margin-bottom: 10px;
+    }
+    .url-item {
+      background: white;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+    }
+    .url-item a {
+      color: #1976d2;
+      text-decoration: none;
+    }
+    .url-item a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>中兴翡翠之光 - 房源管理系统</h1>
+    
+    <div class="card">
+      <h2>展示页面（大屏/客户查看）</h2>
+      <p>实时显示房源售卖状态，适合在大屏幕展示给客户查看</p>
+      <a href="layout.html" class="btn">进入展示页面</a>
+    </div>
+    
+    <div class="card">
+      <h2>管理后台（管理员操作）</h2>
+      <p>管理房源状态，点击切换已售/可售状态</p>
+      <a href="admin.html" class="btn btn-admin">进入管理后台</a>
+    </div>
+    
+    <div class="info">
+      <h3>📱 手机访问说明</h3>
+      <p>1. 确保手机和电脑连接同一个WiFi</p>
+      <p>2. 在手机浏览器中输入以下地址：</p>
+      <div id="ipAddresses"></div>
+      <p id="connectionStatus">正在获取服务器信息...</p>
+    </div>
+  </div>
+
+  <script>
+    // 获取服务器IP地址
+    async function getServerInfo() {
+      try {
+        const response = await fetch('/api/ip');
+        const data = await response.json();
+        
+        const ipContainer = document.getElementById('ipAddresses');
+        ipContainer.innerHTML = '';
+        
+        data.ips.forEach(ip => {
+          const urlItem = document.createElement('div');
+          urlItem.className = 'url-item';
+          urlItem.innerHTML = `
+            <strong>展示页面:</strong> 
+            <a href="http://${ip}:${data.port}/layout.html" target="_blank">
+              http://${ip}:${data.port}/layout.html
+            </a>
+          `;
+          ipContainer.appendChild(urlItem);
+        });
+        
+        document.getElementById('connectionStatus').innerHTML = 
+          '<span style="color: #10b981;">✓ 服务器连接正常</span>';
+          
+      } catch (error) {
+        console.error('获取服务器信息失败:', error);
+        document.getElementById('connectionStatus').innerHTML = 
+          '<span style="color: #ef4444;">✗ 无法获取服务器信息，请确保服务器正在运行</span>';
+      }
+    }
+    
+    // 页面加载时获取信息
+    window.addEventListener('DOMContentLoaded', () => {
+      getServerInfo();
+      // 每30秒刷新一次IP信息
+      setInterval(getServerInfo, 30000);
+    });
+  </script>
+</body>
+</html>
