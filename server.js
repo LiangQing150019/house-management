@@ -2,8 +2,7 @@ const WebSocket = require('ws');
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(cors());
@@ -13,122 +12,158 @@ app.use(express.static('.'));
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-// 数据存储文件
-const DATA_FILE = 'data.json';
+// Supabase 配置
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 从文件加载数据
-function loadData() {
+// 存储房源状态
+let houseStatus = {};
+
+// 从数据库加载数据
+async function loadFromDatabase() {
   try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, 'utf8');
-      return JSON.parse(data);
+    const { data, error } = await supabase
+      .from('house_status')
+      .select('*');
+    
+    if (error) {
+      console.log('数据库为空或错误:', error.message);
+      return {};
     }
+    
+    const result = {};
+    data.forEach(item => {
+      result[item.room_id] = item.is_sold;
+    });
+    
+    console.log(`从数据库加载了 ${data.length} 条数据`);
+    return result;
   } catch (error) {
-    console.error('加载数据文件失败:', error);
+    console.error('加载数据失败:', error);
+    return {};
   }
-  return {};
 }
 
-// 保存数据到文件
-function saveData(data) {
+// 更新数据库
+async function updateDatabase(roomId, isSold) {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-    console.log('数据已保存到文件');
+    const { error } = await supabase
+      .from('house_status')
+      .upsert({ 
+        room_id: roomId, 
+        is_sold: isSold,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
     return true;
   } catch (error) {
-    console.error('保存数据失败:', error);
+    console.error('更新数据库失败:', error);
     return false;
   }
 }
 
-// 房源状态
-let houseStatus = loadData();
-
-// 初始化房源状态（如果文件为空）
-function initializeHouseStatus() {
-  if (Object.keys(houseStatus).length > 0) {
-    console.log('从文件加载了数据，房间数量:', Object.keys(houseStatus).length);
-    return;
+// 初始化数据库
+async function initializeDatabase() {
+  try {
+    console.log('正在初始化数据库...');
+    
+    // 检查是否有数据
+    const { data, error } = await supabase
+      .from('house_status')
+      .select('room_id')
+      .limit(1);
+    
+    if (error) {
+      console.log('创建表可能不存在，需要创建');
+    }
+    
+    if (!data || data.length === 0) {
+      console.log('数据库为空，创建默认数据...');
+      
+      // 创建所有房源
+      const allRooms = [];
+      
+      // 4号楼 1单元
+      for (let floor = 18; floor >= 1; floor--) {
+        const room1Id = floor === 1 ? '4-1-101' : `4-1-${floor}01`;
+        const room2Id = floor === 1 ? '4-1-102' : `4-1-${floor}02`;
+        allRooms.push({ room_id: room1Id, is_sold: false });
+        allRooms.push({ room_id: room2Id, is_sold: false });
+      }
+      
+      // 4号楼 2单元
+      for (let floor = 18; floor >= 1; floor--) {
+        const room1Id = floor === 1 ? '4-2-101' : `4-2-${floor}01`;
+        const room2Id = floor === 1 ? '4-2-102' : `4-2-${floor}02`;
+        allRooms.push({ room_id: room1Id, is_sold: false });
+        allRooms.push({ room_id: room2Id, is_sold: false });
+      }
+      
+      // 4号楼 3单元
+      for (let floor = 18; floor >= 1; floor--) {
+        const room1Id = floor === 1 ? '4-3-101' : `4-3-${floor}01`;
+        const room2Id = floor === 1 ? '4-3-102' : `4-3-${floor}02`;
+        allRooms.push({ room_id: room1Id, is_sold: false });
+        allRooms.push({ room_id: room2Id, is_sold: false });
+      }
+      
+      // 5号楼 1单元
+      for (let floor = 6; floor >= 1; floor--) {
+        const room1Id = floor === 1 ? '5-1-101' : `5-1-${floor}01`;
+        const room2Id = floor === 1 ? '5-1-102' : `5-1-${floor}02`;
+        allRooms.push({ room_id: room1Id, is_sold: false });
+        allRooms.push({ room_id: room2Id, is_sold: false });
+      }
+      
+      // 5号楼 2单元
+      for (let floor = 6; floor >= 1; floor--) {
+        const room1Id = floor === 1 ? '5-2-101' : `5-2-${floor}01`;
+        const room2Id = floor === 1 ? '5-2-102' : `5-2-${floor}02`;
+        allRooms.push({ room_id: room1Id, is_sold: false });
+        allRooms.push({ room_id: room2Id, is_sold: false });
+      }
+      
+      // 5号楼 3单元
+      for (let floor = 6; floor >= 1; floor--) {
+        const room1Id = floor === 1 ? '5-3-101' : `5-3-${floor}01`;
+        const room2Id = floor === 1 ? '5-3-102' : `5-3-${floor}02`;
+        allRooms.push({ room_id: room1Id, is_sold: false });
+        allRooms.push({ room_id: room2Id, is_sold: false });
+      }
+      
+      // 车位
+      for (let i = 1; i <= 62; i++) allRooms.push({ room_id: `车位-A${i}`, is_sold: false });
+      for (let i = 8; i <= 19; i++) allRooms.push({ room_id: `车位-B${i}`, is_sold: false });
+      for (let i = 43; i <= 48; i++) allRooms.push({ room_id: `车位-B${i}`, is_sold: false });
+      for (let i = 1; i <= 44; i++) allRooms.push({ room_id: `车位-C${i}`, is_sold: false });
+      
+      // 仓房
+      for (let i = 1; i <= 10; i++) allRooms.push({ room_id: `仓房-4#下Z${i}`, is_sold: false });
+      for (let i = 11; i <= 32; i++) allRooms.push({ room_id: `仓房-5#下Z${i}`, is_sold: false });
+      for (let i = 33; i <= 39; i++) allRooms.push({ room_id: `仓房-Z${i}`, is_sold: false });
+      
+      // 批量插入
+      for (let i = 0; i < allRooms.length; i += 100) {
+        const batch = allRooms.slice(i, i + 100);
+        const { error } = await supabase
+          .from('house_status')
+          .insert(batch);
+        
+        if (error) console.log(`插入批次 ${i} 失败:`, error.message);
+      }
+      
+      console.log(`初始化完成，创建了 ${allRooms.length} 个房间`);
+    } else {
+      console.log('数据库中已有数据，跳过初始化');
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('初始化数据库失败:', error);
+    return false;
   }
-  
-  console.log('数据文件为空，正在初始化...');
-  houseStatus = {};
-  
-  // 4号楼 1单元
-  for (let floor = 18; floor >= 1; floor--) {
-    const room1Id = floor === 1 ? '4-1-101' : `4-1-${floor}01`;
-    const room2Id = floor === 1 ? '4-1-102' : `4-1-${floor}02`;
-    houseStatus[room1Id] = false;
-    houseStatus[room2Id] = false;
-  }
-  
-  // 4号楼 2单元
-  for (let floor = 18; floor >= 1; floor--) {
-    const room1Id = floor === 1 ? '4-2-101' : `4-2-${floor}01`;
-    const room2Id = floor === 1 ? '4-2-102' : `4-2-${floor}02`;
-    houseStatus[room1Id] = false;
-    houseStatus[room2Id] = false;
-  }
-  
-  // 4号楼 3单元
-  for (let floor = 18; floor >= 1; floor--) {
-    const room1Id = floor === 1 ? '4-3-101' : `4-3-${floor}01`;
-    const room2Id = floor === 1 ? '4-3-102' : `4-3-${floor}02`;
-    houseStatus[room1Id] = false;
-    houseStatus[room2Id] = false;
-  }
-  
-  // 5号楼 1单元
-  for (let floor = 6; floor >= 1; floor--) {
-    const room1Id = floor === 1 ? '5-1-101' : `5-1-${floor}01`;
-    const room2Id = floor === 1 ? '5-1-102' : `5-1-${floor}02`;
-    houseStatus[room1Id] = false;
-    houseStatus[room2Id] = false;
-  }
-  
-  // 5号楼 2单元
-  for (let floor = 6; floor >= 1; floor--) {
-    const room1Id = floor === 1 ? '5-2-101' : `5-2-${floor}01`;
-    const room2Id = floor === 1 ? '5-2-102' : `5-2-${floor}02`;
-    houseStatus[room1Id] = false;
-    houseStatus[room2Id] = false;
-  }
-  
-  // 5号楼 3单元
-  for (let floor = 6; floor >= 1; floor--) {
-    const room1Id = floor === 1 ? '5-3-101' : `5-3-${floor}01`;
-    const room2Id = floor === 1 ? '5-3-102' : `5-3-${floor}02`;
-    houseStatus[room1Id] = false;
-    houseStatus[room2Id] = false;
-  }
-  
-  // 车位
-  for (let i = 1; i <= 62; i++) {
-    houseStatus[`车位-A${i}`] = false;
-  }
-  for (let i = 8; i <= 19; i++) {
-    houseStatus[`车位-B${i}`] = false;
-  }
-  for (let i = 43; i <= 48; i++) {
-    houseStatus[`车位-B${i}`] = false;
-  }
-  for (let i = 1; i <= 44; i++) {
-    houseStatus[`车位-C${i}`] = false;
-  }
-  
-  // 仓房
-  for (let i = 1; i <= 10; i++) {
-    houseStatus[`仓房-4#下Z${i}`] = false;
-  }
-  for (let i = 11; i <= 32; i++) {
-    houseStatus[`仓房-5#下Z${i}`] = false;
-  }
-  for (let i = 33; i <= 39; i++) {
-    houseStatus[`仓房-Z${i}`] = false;
-  }
-  
-  saveData(houseStatus);
-  console.log('初始化完成，总房间数:', Object.keys(houseStatus).length);
 }
 
 // 存储连接的客户端
@@ -138,12 +173,12 @@ const clients = {
 };
 
 // WebSocket连接处理
-wss.on('connection', (ws, req) => {
+wss.on('connection', async (ws, req) => {
   console.log('新客户端连接');
   
   let clientType = 'display';
   
-  ws.on('message', (message) => {
+  ws.on('message', async (message) => {
     try {
       const data = JSON.parse(message);
       
@@ -175,13 +210,13 @@ wss.on('connection', (ws, req) => {
         const { roomId, isSold } = data;
         console.log(`更新房间状态: ${roomId} -> ${isSold}`);
         
-        // 更新状态
-        if (houseStatus.hasOwnProperty(roomId)) {
-          houseStatus[roomId] = isSold;
-          
-          // 保存到文件
-          saveData(houseStatus);
-          
+        // 更新内存
+        houseStatus[roomId] = isSold;
+        
+        // 更新数据库
+        const success = await updateDatabase(roomId, isSold);
+        
+        if (success) {
           // 广播给所有展示页面
           broadcastToDisplays({
             type: 'status-update',
@@ -208,26 +243,34 @@ wss.on('connection', (ws, req) => {
           houseStatus[key] = false;
         });
         
+        // 更新数据库重置
+        const { data: allRooms } = await supabase
+          .from('house_status')
+          .select('room_id');
+        
+        if (allRooms) {
+          const resetPromises = allRooms.map(room =>
+            supabase.from('house_status').update({ is_sold: false }).eq('room_id', room.room_id)
+          );
+          await Promise.all(resetPromises);
+        }
+        
         // 设置已售房源
+        const updatePromises = [];
         if (soldRooms) {
           soldRooms.forEach(roomId => {
-            if (houseStatus.hasOwnProperty(roomId)) {
-              houseStatus[roomId] = true;
-            }
+            houseStatus[roomId] = true;
+            updatePromises.push(updateDatabase(roomId, true));
           });
         }
-        
-        // 设置车位/仓房
         if (soldPw) {
           soldPw.forEach(pwId => {
-            if (houseStatus.hasOwnProperty(pwId)) {
-              houseStatus[pwId] = true;
-            }
+            houseStatus[pwId] = true;
+            updatePromises.push(updateDatabase(pwId, true));
           });
         }
         
-        // 保存到文件
-        saveData(houseStatus);
+        await Promise.all(updatePromises);
         
         // 广播全量更新
         broadcastToDisplays({
@@ -248,7 +291,17 @@ wss.on('connection', (ws, req) => {
           houseStatus[key] = false;
         });
         
-        saveData(houseStatus);
+        // 重置数据库
+        const { data: allRooms } = await supabase
+          .from('house_status')
+          .select('room_id');
+        
+        if (allRooms) {
+          const resetPromises = allRooms.map(room =>
+            supabase.from('house_status').update({ is_sold: false }).eq('room_id', room.room_id)
+          );
+          await Promise.all(resetPromises);
+        }
         
         broadcastToDisplays({
           type: 'full-update',
@@ -287,59 +340,43 @@ function broadcastToDisplays(message) {
 }
 
 // HTTP接口
-app.get('/api/status', (req, res) => {
-  res.json(houseStatus);
-});
-
-app.get('/api/init', (req, res) => {
-  initializeHouseStatus();
-  res.json({ success: true, message: '初始化完成' });
-});
-
-app.get('/api/backup', (req, res) => {
-  const data = JSON.stringify(houseStatus, null, 2);
-  res.setHeader('Content-Disposition', 'attachment; filename="house-backup.json"');
-  res.setHeader('Content-Type', 'application/json');
-  res.send(data);
-});
-
-app.post('/api/restore', express.json(), (req, res) => {
+app.get('/api/status', async (req, res) => {
   try {
-    const newData = req.body;
-    // 验证数据格式
-    if (typeof newData === 'object' && newData !== null) {
-      houseStatus = newData;
-      saveData(houseStatus);
-      
-      // 广播更新
-      broadcastToDisplays({
-        type: 'full-update',
-        data: houseStatus
-      });
-      
-      res.json({ success: true, message: '数据恢复成功' });
-    } else {
-      res.status(400).json({ error: '无效的数据格式' });
-    }
+    const status = await loadFromDatabase();
+    res.json(status);
   } catch (error) {
-    res.status(500).json({ error: '恢复失败' });
+    res.status(500).json({ error: '获取数据失败' });
+  }
+});
+
+app.get('/api/init-db', async (req, res) => {
+  try {
+    await initializeDatabase();
+    houseStatus = await loadFromDatabase();
+    res.json({ success: true, message: '数据库初始化成功' });
+  } catch (error) {
+    res.status(500).json({ error: '初始化失败' });
   }
 });
 
 // 启动服务器
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n=== 服务器已启动 ===`);
-  console.log(`- 端口: ${PORT}`);
+server.listen(PORT, '0.0.0.0', async () => {
+  console.log(`\n=== 中兴翡翠之光房源管理系统 ===`);
+  console.log(`服务器运行在端口: ${PORT}`);
   
   // 初始化数据
-  initializeHouseStatus();
+  houseStatus = await loadFromDatabase();
+  if (Object.keys(houseStatus).length === 0) {
+    console.log('数据库为空，正在初始化...');
+    await initializeDatabase();
+    houseStatus = await loadFromDatabase();
+  }
   
   console.log(`- 总房间数: ${Object.keys(houseStatus).length}`);
-  console.log(`- 数据文件: ${DATA_FILE}`);
   console.log(`\n=== 访问地址 ===`);
   console.log(`- 主页面: http://localhost:${PORT}`);
   console.log(`- 管理后台: http://localhost:${PORT}/admin.html`);
   console.log(`- 展示页面: http://localhost:${PORT}/layout.html`);
-  console.log(`- 数据备份: http://localhost:${PORT}/api/backup`);
+  console.log(`- 数据备份: http://localhost:${PORT}/api/status`);
 });
