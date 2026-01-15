@@ -438,7 +438,23 @@
   <script>
     // WebSocket连接
 const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const WS_URL = `${protocol}//${window.location.host}`;
+async function updateRoomStatus(roomId, isSold) {
+  try {
+    const response = await fetch('/api/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomId, isSold })
+    });
+    
+    if (response.ok) {
+      // 更新成功后刷新页面状态
+      loadRoomStatus();
+      showToast(`${roomId} 状态已更新`, 'success');
+    }
+  } catch (error) {
+    showToast('更新失败', 'error');
+  }
+}
     // 房源配置（带楼层和面积信息）
     const ROOM_CONFIG = {
       "4-1": {
